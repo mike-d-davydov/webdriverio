@@ -1,4 +1,4 @@
-import Future from 'fibers/future'
+import { Future } from './fibers'
 
 import executeHooksWithArgs from './executeHooksWithArgs'
 import { sanitizeErrorMessage } from './utils'
@@ -12,47 +12,29 @@ import { sanitizeErrorMessage } from './utils'
  * @return {Function}   actual wrapped function
  */
 export default function wrapCommand (commandName, fn) {
-    /**
-     * helper method that runs the command with before/afterCommand hook
-     */
-    const runCommand = async function (...args) {
-        // save error for getting full stack in case of failure
-        // should be before any async calls
-        const stackError = new Error()
-
-        await executeHooksWithArgs(
-            this.options.beforeCommand,
-            [commandName, args]
-        )
-
-        let commandResult
-        let commandError
-        try {
-            commandResult = await fn.apply(this, args)
-        } catch (err) {
-            commandError = sanitizeErrorMessage(err, stackError)
+    return function wrapCommandFn (...args) {
+        /**
+         * Avoid running some functions in Future that are not in Fiber.
+         */
+        if (this._NOT_FIBER === true) {
+            this._NOT_FIBER = isNotInFiber(this, fn.name)
+            return fn.apply(this, args)
         }
+        /**
+         * all named nested functions run in parent Fiber context
+         * except of debug and waitUntil
+         */
+        this._NOT_FIBER = fn.name !== '' && fn.name !== 'debug' && commandName !== 'waitUntil'
 
-        await executeHooksWithArgs(
-            this.options.afterCommand,
-            [commandName, args, commandResult, commandError]
-        )
-
-        if (commandError) {
-            throw commandError
-        }
-
-        return commandResult
-    }
-
-    return function (...args) {
         const future = new Future()
 
-        const result = runCommand.apply(this, args)
+        const result = runCommandWithHooks.apply(this, [commandName, fn, ...args])
         result.then(::future.return, ::future.throw)
 
         try {
-            return future.wait()
+            const futureResult = future.wait()
+            inFiber(this)
+            return futureResult
         } catch (e) {
             /**
              * in case some 3rd party lib rejects without bundling into an error
@@ -69,7 +51,64 @@ export default function wrapCommand (commandName, fn) {
                 return result
             }
 
+            inFiber(this)
             throw e
         }
+    }
+}
+
+/**
+ * helper method that runs the command with before/afterCommand hook
+ */
+async function runCommandWithHooks (commandName, fn, ...args) {
+    // save error for getting full stack in case of failure
+    // should be before any async calls
+    const stackError = new Error()
+
+    await executeHooksWithArgs(
+        this.options.beforeCommand,
+        [commandName, args]
+    )
+
+    let commandResult
+    let commandError
+    try {
+        commandResult = await fn.apply(this, args)
+    } catch (err) {
+        commandError = sanitizeErrorMessage(err, stackError)
+    }
+
+    await executeHooksWithArgs(
+        this.options.afterCommand,
+        [commandName, args, commandResult, commandError]
+    )
+
+    if (commandError) {
+        throw commandError
+    }
+
+    return commandResult
+}
+
+/**
+ * isNotInFiber
+ * if element or its parent has element id then we are in parent's Fiber
+ * @param {object} context browser or element
+ * @param {string} fnName function name
+ */
+function isNotInFiber (context, fnName) {
+    return fnName !== '' && !!(context.elementId || (context.parent && context.parent.elementId))
+}
+
+/**
+ * set `_NOT_FIBER` to `false` for element and its parents
+ * @param {object} context browser or element
+ */
+function inFiber(context) {
+    context._NOT_FIBER = false
+    let parent = context.parent
+    while (parent && parent._NOT_FIBER) {
+        parent._NOT_FIBER = false
+        parent = parent.parent
     }
 }

@@ -1,6 +1,6 @@
 import assert from 'assert'
 
-describe('smoke test', () => {
+describe('Mocha smoke test', () => {
     it('should return sync value', () => {
         assert.equal(browser.getTitle(), 'Mock Page Title')
     })
@@ -8,6 +8,38 @@ describe('smoke test', () => {
     it('should be able to wait for an element', () => {
         browser.waitForDisplayedScenario()
         assert($('elem').waitForDisplayed(), true)
+    })
+
+    it('should work fine after catching an error', () => {
+        browser.clickScenario()
+
+        let err
+        try {
+            browser.getAlertText()
+        } catch (e) {
+            err = e
+        }
+
+        $('elem').click()
+        assert.equal(err.stack.includes('tests/mocha/test.js:'), true)
+    })
+
+    it('should chain properly', () => {
+        browser.isExistingScenario()
+
+        const el = browser.$('body')
+        assert.equal(el.$('.selector-1').isExisting(), true)
+        assert.equal(el.$('.selector-2').isExisting(), true)
+    })
+
+    it('should handle promises in waitUntil callback funciton', () => {
+        const results = []
+        const result = browser.waitUntil(() => {
+            results.push(browser.getUrl())
+            return results.length > 1
+        })
+        assert.strictEqual(result, true)
+        assert.deepEqual(results, ['https://mymockpage.com', 'https://mymockpage.com'])
     })
 
     describe('middleware', () => {
@@ -44,7 +76,7 @@ describe('smoke test', () => {
         })
     })
 
-    describe('customCommands', () => {
+    describe('add customCommands', () => {
         it('should allow to call nested custom commands', () => {
             browser.addCommand('myCustomCommand', function (param) {
                 const result = {
@@ -112,6 +144,7 @@ describe('smoke test', () => {
                 err = e
             }
             assert.equal(err.message, 'Boom!')
+            assert.equal(err.stack.includes('tests/mocha/test.js:'), true)
         })
 
         it('allows to create custom commands on elements that respects promises', () => {
@@ -122,6 +155,94 @@ describe('smoke test', () => {
             const elem = $('elem')
 
             assert.equal(elem.myCustomPromiseCommand(), 'foobar')
+        })
+    })
+
+    describe('overwrite native commands', () => {
+        it('should allow to overwrite browser commands', () => {
+            browser.customCommandScenario()
+            browser.overwriteCommand('getTitle', function (origCommand, pre = '') {
+                return pre + origCommand()
+            })
+
+            assert.equal(browser.getTitle('Foo '), 'Foo Mock Page Title')
+        })
+
+        it('should allow to overwrite element commands', () => {
+            browser.customCommandScenario()
+            browser.overwriteCommand('getSize', function (origCommand, ratio = 1) {
+                const { width, height } = origCommand()
+                return { width: width * ratio, height: height * ratio }
+            }, true)
+            const elem = $('elem')
+
+            assert.equal(
+                JSON.stringify(elem.getSize(2)),
+                JSON.stringify({ width: 2, height: 4 })
+            )
+        })
+
+        it('should allow to invoke native command on different element', () => {
+            browser.customCommandScenario()
+            browser.overwriteCommand('getSize', function (origCommand, ratio = 1) {
+                const elemAlt = $('elemAlt')
+                const { width, height } = origCommand.call(elemAlt)
+                return { width: width * ratio, height: height * ratio }
+            }, true)
+            const elem = $('elem')
+
+            assert.equal(
+                JSON.stringify(elem.getSize(2)),
+                JSON.stringify({ width: 20, height: 40 })
+            )
+        })
+
+        it('should keep the scope', () => {
+            browser.customCommandScenario()
+            browser.overwriteCommand('saveRecordingScreen', function (origCommand, filepath, elem) {
+                if (elem) {
+                    return this.execute('1+1') + '-' + elem.selector
+                }
+                return origCommand(filepath)
+            })
+
+            assert.equal(browser.saveRecordingScreen(null, $('body')), '2-body')
+        })
+
+        it('should respect promises - browser', () => {
+            browser.customCommandScenario()
+            browser.overwriteCommand('getUrl', function (origCommand, append = '') {
+                return Promise.resolve(origCommand() + append)
+            })
+
+            assert.equal(browser.getUrl('/foobar'), 'https://mymockpage.com/foobar')
+        })
+
+        it('should respect promises - element', () => {
+            browser.customCommandScenario()
+            browser.overwriteCommand('getHTML', function (origCommand) {
+                return Promise.resolve(origCommand())
+            }, true)
+            const elem = $('elem')
+
+            assert.equal(elem.getHTML(), '2')
+        })
+
+        it('should throw if promise rejects', () => {
+            browser.customCommandScenario()
+            browser.overwriteCommand('deleteCookies', (origCommand, fail) => {
+                const result = origCommand()
+                return fail ? Promise.reject(result) : result
+            })
+
+            let err = null
+            try {
+                browser.deleteCookies(true)
+            } catch (e) {
+                err = e
+            }
+            assert.equal(err.message, 'deleteAllCookies')
+            assert.equal(err.stack.includes('tests/mocha/test.js:'), true)
         })
     })
 })

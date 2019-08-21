@@ -323,7 +323,8 @@ exports.config = {
     afterSession: function (config, capabilities, specs) {
     },
     /**
-     * Gets executed after all workers got shut down and the process is about to exit.
+     * Gets executed after all workers got shut down and the process is about to exit. An error
+     * thrown in the onComplete hook will result in the test run failing.
      * @param {Object} exitCode 0 - success, 1 - fail
      * @param {Object} config wdio configuration object
      * @param {Array.<Object>} capabilities list of capabilities details
@@ -341,17 +342,17 @@ exports.config = {
     /**
      * Cucumber specific hooks
      */
-    beforeFeature: function (feature) {
+    beforeFeature: function (uri, feature, scenarios) {
     },
-    beforeScenario: function (scenario) {
+    beforeScenario: function (uri, feature, scenario, sourceLocation) {
     },
-    beforeStep: function (step) {
+    beforeStep: function (uri, feature) {
     },
-    afterStep: function (stepResult) {
+    afterStep: function (uri, feature, { error, result }) {
     },
-    afterScenario: function (scenario) {
+    afterScenario: function (uri, feature, scenario, result, sourceLocation) {
     },
-    afterFeature: function (feature) {
+    afterFeature: function (uri, feature, scenarios) {
     }
 };
 ```

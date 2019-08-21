@@ -4,11 +4,6 @@
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
 /// <reference types="node"/>
 
-type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
-
-type ArgumentTypes<T> = T extends (...args: infer U) => infer R ? U : never;
-type WrapWithPromise<T, R> = (...args: ArgumentTypes<T>) => Promise<R>;
-
 declare namespace WebDriver {
     type PageLoadingStrategy = 'none' | 'eager' | 'normal';
     type ProxyTypes = 'pac' | 'noproxy' | 'autodetect' | 'system' | 'manual';
@@ -71,6 +66,7 @@ declare namespace WebDriver {
         perfLoggingPrefs?: {
             [name: string]: any;
         };
+        prefs?: string[];
         windowTypes?: string[];
     }
 
@@ -83,7 +79,7 @@ declare namespace WebDriver {
         args?: string[],
         profile?: string,
         log?: FirefoxLogObject,
-        prefs: {
+        prefs?: {
             [name: string]: string | number | boolean;
         }
     }
@@ -165,6 +161,11 @@ declare namespace WebDriver {
         pageLoadingStrategy?: string;
         'moz:firefoxOptions'?: FirefoxOptions;
 
+        // Edge specific
+        'ms:inPrivate'?: boolean;
+        'ms:extensionPaths'?: string[];
+        'ms:startPage'?: string;
+
         // IE specific
         'ie.forceCreateProcessApi'?: boolean;
         'ie.browserCommandLineSwitches'?: string;
@@ -205,15 +206,143 @@ declare namespace WebDriver {
             bufferUsageReportingInterval?: boolean;
         };
 
+        // webdriverio specific
+        specs?: string[];
+        exclude?: string[];
+
         // wdio-sauce-service specific
         build?: string;
 
-        // Appium
-        deviceName?: string;
+        // Saucelabs w3c specific
+        'sauce:options'?: {
+            [name: string]: any;
+        };
+
+        // Browserstack w3c specific
+        'bstack:options'?: {
+            [name: string]: any;
+        };
+
+        // Testingbot w3c specific
+        'tb:options'?: {
+            [name: string]: any;
+        };
+
+        // Appium General Capabilities
         automationName?: string;
         platformVersion?: string;
+        deviceName?: string;
         app?: string;
+        newCommandTimeout?: number;
+        language?: string;
+        locale?: string;
         udid?: string;
+        orientation?: string;
+        autoWebview?: boolean;
+        noReset?: boolean;
+        fullReset?: boolean;
+        eventTimings?: boolean;
+        enablePerformanceLogging?: boolean;
+        printPageSourceOnFindFailure?: boolean;
+
+        // Appium Android Only
+        appActivity?: string;
+        appPackage?: string;
+        appWaitActivity?: string;
+        appWaitPackage?: string;
+        appWaitDuration?: number;
+        deviceReadyTimeout?: number;
+        allowTestPackages?: boolean;
+        androidCoverage?: string;
+        androidCoverageEndIntent?: string;
+        androidDeviceReadyTimeout?: number;
+        androidInstallTimeout?: number;
+        androidInstallPath?: string;
+        adbPort?: number;
+        systemPort?: number;
+        remoteAdbHost?: string;
+        androidDeviceSocket?: string;
+        avd?: string;
+        avdLaunchTimeout?: number;
+        avdReadyTimeout?: number;
+        avdArgs?: string;
+        useKeystore?: boolean;
+        keystorePath?: string;
+        keystorePassword?: string;
+        keyAlias?: string;
+        keyPassword?: string;
+        chromedriverExecutable?: string;
+        chromedriverArgs?: string[];
+        chromedriverExecutableDir?: string;
+        chromedriverChromeMappingFile?: string;
+        chromedriverUseSystemExecutable?: boolean;
+        autoWebviewTimeout?: number;
+        chromedriverPort?: number;
+        chromedriverPorts?: (number | number[])[]
+        intentAction?: string;
+        intentCategory?: string;
+        intentFlags?: string;
+        optionalIntentArguments?: string;
+        dontStopAppOnReset?: boolean;
+        unicodeKeyboard?: boolean;
+        resetKeyboard?: boolean;
+        noSign?: boolean;
+        ignoreUnimportantViews?: boolean;
+        disableAndroidWatchers?: boolean;
+        recreateChromeDriverSessions?: boolean;
+        nativeWebScreenshot?: boolean;
+        androidScreenshotPath?: string;
+        autoGrantPermissions?: boolean;
+        networkSpeed?: string;
+        gpsEnabled?: boolean;
+        isHeadless?: boolean;
+        adbExecTimeout?: number;
+        localeScript?: string;
+        skipDeviceInitialization?: boolean;
+        chromedriverDisableBuildCheck?: boolean;
+        skipUnlock?: boolean;
+        unlockType?: string;
+        unlockKey?: string;
+        autoLaunch?: boolean;
+        skipLogcatCapture?: boolean;
+        uninstallOtherPackages?: string;
+        disableWindowAnimation?: boolean;
+        otherApps?: string;
+        uiautomator2ServerLaunchTimeout?: number;
+        uiautomator2ServerInstallTimeout?: number;
+        skipServerInstallation?: boolean;
+        espressoServerLaunchTimeout?: number;
+
+        // Appium iOS Only
+        calendarFormat?: string;
+        bundleId?: string;
+        launchTimeout?: number;
+        locationServicesEnabled?: boolean;
+        locationServicesAuthorized?: boolean;
+        autoAcceptAlerts?: boolean;
+        autoDismissAlerts?: boolean;
+        nativeInstrumentsLib?: boolean;
+        nativeWebTap?: boolean;
+        safariInitialUrl?: string;
+        safariAllowPopups?: boolean;
+        safariIgnoreFraudWarning?: boolean;
+        safariOpenLinksInBackground?: boolean;
+        keepKeyChains?: boolean;
+        localizableStringsDir?: string;
+        processArguments?: string;
+        interKeyDelay?: number;
+        showIOSLog?: boolean;
+        sendKeyStrategy?: string;
+        screenshotWaitTimeout?: number;
+        waitForAppScript?: string;
+        webviewConnectRetries?: number;
+        appName?: string;
+        customSSLCert?: string;
+        webkitResponseTimeout?: number;
+        remoteDebugProxy?: string;
+        enableAsyncExecuteFromHttps?: boolean;
+        skipLogCapture?: boolean;
+        webkitDebugProxyPort?: number;
     }
 
     interface Options {
@@ -255,20 +384,71 @@ declare namespace WebDriver {
     interface ClientOptions {
         capabilities: DesiredCapabilities;
         isW3C: boolean;
+        isChrome: boolean;
         isAndroid: boolean;
         isMobile: boolean;
         isIOS: boolean;
         sessionId: string;
     }
 
+    // object with no match
+    interface ProtocolCommandResponse {
+        [key: string]: any;
+    }
+
+    // webdriver.json
+    interface SessionReturn extends DesiredCapabilities, ProtocolCommandResponse { }
+
+    interface StatusReturn extends ProtocolCommandResponse {
+        ready?: boolean,
+        message?: string,
+    }
+
+    interface WindowHandle {
+        handle: string,
+        type: string
+    }
+
+    interface RectReturn {
+        x: number,
+        y: number,
+        width: number,
+        height: number
+    }
+
+    // appium.json
+    interface StringsReturn {
+        [key:string]: string
+    }
+
+    interface SettingsReturn extends ProtocolCommandResponse {
+        shouldUseCompactResponses?: boolean,
+        elementResponseAttributes?: string,
+        ignoreUnimportantViews?: boolean,
+        allowInvisibleElements?: boolean,
+        enableNotificationListener?: boolean,
+        actionAcknowledgmentTimeout?: number,
+        keyInjectionDelay?: number,
+        scrollAcknowledgmentTimeout?: number,
+        waitForIdleTimeout?: number,
+        waitForSelectorTimeout?: number,
+        normalizeTagNames?: boolean,
+        shutdownOnPowerDisconnect?: boolean,
+        mjpegServerScreenshotQuality?: number,
+        mjpegServerFramerate?: number,
+        screenshotQuality?: number,
+        mjpegScalingFactor?: number,
+    }
+
     // generated typings
     // ... insert here ...
 
-    interface ClientAsync extends AsyncClient {}
+    interface ClientAsync extends AsyncClient { }
 }
 
 type AsyncClient = {
-    [K in keyof WebDriver.Client]: WrapWithPromise<WebDriver.Client[K], ReturnType<WebDriver.Client[K]>>
+    [K in keyof WebDriver.Client]:
+    (...args: Parameters<WebDriver.Client[K]>) => Promise<ReturnType<WebDriver.Client[K]>>;
 }
 
 declare module "webdriver" {

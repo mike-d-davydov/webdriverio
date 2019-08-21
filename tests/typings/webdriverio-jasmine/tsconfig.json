@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "outDir": "dist",
+    "noImplicitAny": true,
     "types": [
       "webdriverio",
       "@wdio/jasmine-framework"

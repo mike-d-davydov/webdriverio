@@ -35,14 +35,14 @@ export default class BrowserstackService {
             user: this.config.user,
             pass: this.config.key
         }
-        if (global.browser.capabilities.app) {
+        if (this.config.capabilities.app) {
             this.sessionBaseUrl = 'https://api-cloud.browserstack.com/app-automate/sessions'
         }
         return this._printSessionURL()
     }
 
     afterSuite(suite) {
-        if (suite.hasOwnProperty('error')) {
+        if (Object.prototype.hasOwnProperty.call(suite, 'error')) {
             this.failures++
         }
     }
@@ -56,7 +56,7 @@ export default class BrowserstackService {
         }
     }
 
-    afterStep(feature) {
+    afterStep(uri, feature) {
         if (
             /**
              * Cucumber v1

@@ -1,8 +1,7 @@
-import { filterPackageName } from './utils'
-
 export const SUPPORTED_FRAMEWORKS = [
-    'mocha', // https://github.com/webdriverio/webdriverio/tree/master/packages/wdio-mocha-framework
-    'jasmine' // https://github.com/webdriverio/webdriverio/tree/master/packages/wdio-jasmine-framework
+    ' mocha - https://www.npmjs.com/package/@wdio/mocha-framework',
+    ' jasmine - https://www.npmjs.com/package/@wdio/jasmine-framework',
+    ' cucumber - https://www.npmjs.com/package/@wdio/cucumber-framework'
 ]
 
 export const SUPPORTED_REPORTER = [
@@ -16,6 +15,7 @@ export const SUPPORTED_REPORTER = [
     ' video - https://www.npmjs.com/package/wdio-video-reporter',
     ' html - https://www.npmjs.com/package/@rpii/wdio-html-reporter',
     ' json - https://www.npmjs.com/package/wdio-json-reporter',
+    ' cucumberjs-json - https://www.npmjs.com/package/wdio-cucumberjs-json-reporter',
     ' mochawesome - https://www.npmjs.com/package/wdio-mochawesome-reporter',
     ' timeline - https://www.npmjs.com/package/wdio-timeline-reporter',
 ]
@@ -28,12 +28,13 @@ export const SUPPORTED_SERVICES = [
     ' devtools - https://www.npmjs.com/package/@wdio/devtools-service',
     ' applitools - https://www.npmjs.com/package/@wdio/applitools-service',
     ' browserstack - https://www.npmjs.com/package/@wdio/browserstack-service',
+    ' crossbrowsertesting - https://www.npmjs.com/package/wdio-crossbrowsertesting-service',
     ' appium - https://www.npmjs.com/package/@wdio/appium-service',
     ' intercept - https://www.npmjs.com/package/wdio-intercept-service',
     ' zafira-listener - https://www.npmjs.com/package/wdio-zafira-listener-service',
     ' reportportal - https://www.npmjs.com/package/wdio-reportportal-service',
     ' docker - https://www.npmjs.com/package/wdio-docker-service',
-    ' firefox-profile - https://www.npmjs.com/package/@wdio/firefox-profile-service',
+    ' firefox-profile - https://www.npmjs.com/package/@wdio/firefox-profile-service'
 ]
 
 export const EXCLUSIVE_SERVICES = {
@@ -55,6 +56,7 @@ WebdriverIO CLI runner
 Usage: wdio [options] [configFile]
 Usage: wdio config
 Usage: wdio repl <browserName>
+Usage: wdio install <type> <name>
 
 config file defaults to wdio.conf.js
 The [options] object will override values from the config file.
@@ -155,17 +157,12 @@ export const CLI_PARAMS = [{
     description: 'Cucumber options'
 }]
 
+/* istanbul ignore next */
 export const QUESTIONNAIRE = [{
     type: 'list',
     name: 'runner',
     message: 'Where should your tests be launched?',
     choices: SUPPORTED_RUNNERS,
-    filter: (runner) => runner.split(/-/)[0].trim()
-}, {
-    type: 'confirm',
-    name: 'installRunner',
-    message: 'Shall I install the runner plugin for you?',
-    default: true
 }, {
     type: 'list',
     name: 'backend',
@@ -248,12 +245,7 @@ export const QUESTIONNAIRE = [{
     type: 'list',
     name: 'framework',
     message: 'Which framework do you want to use?',
-    choices: SUPPORTED_FRAMEWORKS
-}, {
-    type: 'confirm',
-    name: 'installFramework',
-    message: 'Shall I install the framework adapter for you?',
-    default: true
+    choices: SUPPORTED_FRAMEWORKS,
 }, {
     type: 'list',
     name: 'executionMode',
@@ -273,33 +265,25 @@ export const QUESTIONNAIRE = [{
     name: 'specs',
     message: 'Where are your feature files located?',
     default: './features/**/*.feature',
-    when: (answers) => answers.framework === 'cucumber'
+    when: (answers) => answers.framework.includes('cucumber')
 }, {
     type: 'input',
     name: 'stepDefinitions',
     message: 'Where are your step definitions located?',
     default: './features/step-definitions',
-    when: (answers) => answers.framework === 'cucumber'
+    when: (answers) => answers.framework.includes('cucumber')
 }, {
     type: 'checkbox',
     name: 'reporters',
     message: 'Which reporter do you want to use?',
     choices: SUPPORTED_REPORTER,
-    default: SUPPORTED_REPORTER.filter(reporter => reporter.includes('spec-reporter')),
-    filter: filterPackageName('reporter')
-}, {
-    type: 'confirm',
-    name: 'installReporter',
-    message: 'Shall I install the reporter library for you?',
-    default: true,
-    when: (answers) => answers.reporters.length > 0
+    default: SUPPORTED_REPORTER.filter(reporter => reporter.includes('spec-reporter'))
 }, {
     type: 'checkbox',
     name: 'services',
     message: 'Do you want to add a service to your test setup?',
     choices: SUPPORTED_SERVICES,
     default: SUPPORTED_SERVICES.filter(service => service.includes('wdio-chromedriver-service')),
-    filter: filterPackageName('service'),
     validate: (answers) => {
         let result = true
 
@@ -311,12 +295,6 @@ export const QUESTIONNAIRE = [{
 
         return result
     }
-}, {
-    type: 'confirm',
-    name: 'installServices',
-    message: 'Shall I install the services for you?',
-    default: true,
-    when: (answers) => answers.services.length > 0
 }, {
     type: 'input',
     name: 'outputDir',
@@ -335,12 +313,6 @@ export const QUESTIONNAIRE = [{
     message: 'In which directory should the mochawesome json reports get stored?',
     default: './',
     when: (answers) => answers.reporters.includes('mochawesome')
-}, {
-    type: 'list',
-    name: 'logLevel',
-    message: 'Level of logging verbosity',
-    default: 'info',
-    choices: LOG_LEVELS
 }, {
     type: 'input',
     name: 'baseUrl',

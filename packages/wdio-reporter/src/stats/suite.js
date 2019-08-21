@@ -5,11 +5,12 @@ import RunnableStats from './runnable'
  */
 export default class SuiteStats extends RunnableStats {
     constructor (suite) {
-        super('suite')
+        super(suite.type || 'suite')
         this.uid = RunnableStats.getIdentifier(suite)
         this.cid = suite.cid
         this.title = suite.title
         this.fullTitle = suite.fullTitle
+        this.tags = suite.tags
         this.tests = []
         this.hooks = []
         this.suites = []

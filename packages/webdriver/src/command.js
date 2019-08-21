@@ -5,9 +5,9 @@ import { isValidParameter, getArgumentType, commandCallStructure } from './utils
 const log = logger('webdriver')
 
 export default function (method, endpointUri, commandInfo) {
-    const { command, ref, parameters, variables = [] } = commandInfo
+    const { command, ref, parameters, variables = [], isHubCommand = false } = commandInfo
 
-    return function (...args) {
+    return function protocolCommand (...args) {
         let endpoint = endpointUri // clone endpointUri in case we change it
         const commandParams = [...variables.map((v) => Object.assign(v, {
             /**
@@ -64,7 +64,7 @@ export default function (method, endpointUri, commandInfo) {
              * inject url variables
              */
             if (i < variables.length) {
-                endpoint = endpoint.replace(`:${commandParams[i].name}`, arg)
+                endpoint = endpoint.replace(`:${commandParams[i].name}`, encodeURIComponent(encodeURIComponent(arg)))
                 continue
             }
 
@@ -74,12 +74,12 @@ export default function (method, endpointUri, commandInfo) {
             body[commandParams[i].name] = arg
         }
 
-        const request = new WebDriverRequest(method, endpoint, body)
+        const request = new WebDriverRequest(method, endpoint, body, isHubCommand)
         this.emit('command', { method, endpoint, body })
         log.info('COMMAND', commandCallStructure(command, args))
         return request.makeRequest(this.options, this.sessionId).then((result) => {
             if (result.value != null) {
-                log.info('RESULT', command.toLowerCase().includes('screenshot')
+                log.info('RESULT', /screenshot|recording/i.test(command)
                     && typeof result.value === 'string' && result.value.length > 64
                     ? `${result.value.substr(0, 61)}...` : result.value)
             }

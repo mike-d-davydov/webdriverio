@@ -43,6 +43,12 @@ declare namespace WebdriverIO {
         }
     }
 
+    interface MultiRemoteCapabilities {
+        [instanceName: string]: {
+            capabilities: WebDriver.DesiredCapabilities;
+        };
+    }
+
     interface Options {
         runner?: string,
         specs?: string[],
@@ -50,10 +56,11 @@ declare namespace WebdriverIO {
         suites?: object,
         maxInstances?: number,
         maxInstancesPerCapability?: number,
-        capabilities?: WebDriver.DesiredCapabilities | WebDriver.DesiredCapabilities[],
+        capabilities?: WebDriver.DesiredCapabilities[] | MultiRemoteCapabilities,
         outputDir?: string,
         baseUrl?: string,
         bail?: number,
+        specFileRetries?: number,
         waitforTimeout?: number,
         waitforInterval?: number,
         framework?: string,
@@ -64,8 +71,10 @@ declare namespace WebdriverIO {
         execArgv?: string[]
     }
 
+    interface RemoteOptions extends WebDriver.Options, Omit<Options, 'capabilities'> { }
+
     interface MultiRemoteOptions {
-        [capabilityName: string]: Options;
+        [instanceName: string]: WebDriver.DesiredCapabilities;
     }
 
     interface Suite {}
@@ -77,10 +86,10 @@ declare namespace WebdriverIO {
         failed: number
     }
 
-    interface Hooks {
+    interface HookFunctions {
         onPrepare?(
             config: Config,
-            capabilities: WebDriver.DesiredCapabilities
+            capabilities: WebDriver.DesiredCapabilities[]
         ): void;
 
         onComplete?(exitCode: number, config: Config, capabilities: WebDriver.DesiredCapabilities, results: Results): void;
@@ -130,26 +139,28 @@ declare namespace WebdriverIO {
 
         afterSuite?(suite: Suite): void;
         afterTest?(test: Test): void;
-
-        // cucumber specific hooks
-        beforeFeature?(feature: string): void;
-        beforeScenario?(scenario: string): void;
-        beforeStep?(step: string): void;
-        afterFeature?(feature: string): void;
-        afterScenario?(scenario: any): void;
-        afterStep?(stepResult: any): void;
     }
+    type _HooksArray = {
+        [K in keyof Pick<HookFunctions, "onPrepare" | "onComplete" | "before" | "after" | "beforeSession" | "afterSession">]: HookFunctions[K] | Array<HookFunctions[K]>;
+    };
+    type _Hooks = Omit<HookFunctions, "onPrepare" | "onComplete" | "before" | "after" | "beforeSession" | "afterSession">;
+    interface Hooks extends _HooksArray, _Hooks { }
 
     type ActionTypes = 'press' | 'longPress' | 'tap' | 'moveTo' | 'wait' | 'release';
     interface TouchAction {
         action: ActionTypes,
         x?: number,
         y?: number,
-        element?: Element
+        element?: Element,
+        ms?: number
     }
     type TouchActions = string | TouchAction | TouchAction[];
 
     interface Element {
+        "element-6066-11e4-a52e-4f735466cecf"?: string;
+        ELEMENT?: string;
+        selector: string;
+        elementId: string;
         addCommand(
             name: string,
             func: Function
@@ -157,9 +168,6 @@ declare namespace WebdriverIO {
         // ... element commands ...
     }
 
-    type Execute = <T>(script: string | ((...arguments: any[]) => T), ...arguments: any[]) => T;
-    type ExecuteAsync = (script: string | ((...arguments: any[]) => any), ...arguments: any[]) => any;
-    type Call = <T>(callback: Function) => T;
     interface Timeouts {
         implicit?: number,
         pageLoad?: number,
@@ -172,10 +180,12 @@ declare namespace WebdriverIO {
             func: Function,
             attachToElement?: boolean
         ): void;
-        execute: Execute;
-        executeAsync: ExecuteAsync;
-        call: Call;
-        options: Options;
+        overwriteCommand(
+            name: string,
+            func: (origCommand: Function, ...args: any[]) => any,
+            attachToElement?: boolean
+        ): void;
+        options: RemoteOptions;
         // ... browser commands ...
     }
 

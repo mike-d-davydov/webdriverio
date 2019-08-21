@@ -1,7 +1,6 @@
 const DEFAULT_TIMEOUT = 10000
 
 /* istanbul ignore next */
-const NOOP = function () {}
 
 export const DEFAULT_CONFIGS = {
     sync: true,
@@ -44,7 +43,7 @@ export const DEFAULT_CONFIGS = {
     /**
      * hooks
      */
-    onPrepare: NOOP,
+    onPrepare: [],
     before: [],
     beforeSession: [],
     beforeSuite: [],
@@ -57,7 +56,7 @@ export const DEFAULT_CONFIGS = {
     afterSuite: [],
     afterSession: [],
     after: [],
-    onComplete: NOOP,
+    onComplete: [],
     onReload: [],
 
     /**
@@ -66,16 +65,14 @@ export const DEFAULT_CONFIGS = {
     beforeFeature: [],
     beforeScenario: [],
     beforeStep: [],
-    afterFeature: [],
+    afterStep: [],
     afterScenario: [],
-    afterStep: []
+    afterFeature: [],
 }
 
 export const SUPPORTED_HOOKS = [
     'before', 'beforeSession', 'beforeSuite', 'beforeHook', 'beforeTest', 'beforeCommand',
     'afterCommand', 'afterTest', 'afterHook', 'afterSuite', 'afterSession', 'after',
-    'beforeFeature', 'beforeScenario', 'beforeStep', 'afterFeature',
-    'afterScenario', 'afterStep', 'onReload'
-    // the following hooks are excluded since they are part of the launcher
-    // 'onPrepare', 'onComplete'
+    'beforeFeature', 'beforeScenario', 'beforeStep', 'afterStep', 'afterScenario', 'afterFeature',
+    'onReload', 'onPrepare', 'onComplete'
 ]

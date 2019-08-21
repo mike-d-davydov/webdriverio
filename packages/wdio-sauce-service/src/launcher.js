@@ -1,5 +1,7 @@
+import logger from '@wdio/logger'
 import SauceConnectLauncher from 'sauce-connect-launcher'
 
+const log = logger('@wdio/sauce-service')
 export default class SauceLauncher {
     /**
      * modify config and launch sauce connect
@@ -11,7 +13,8 @@ export default class SauceLauncher {
 
         this.sauceConnectOpts = Object.assign({
             username: config.user,
-            accessKey: config.key
+            accessKey: config.key,
+            logger: log.debug
         }, config.sauceConnectOpts)
 
         config.protocol = 'http'
@@ -23,11 +26,19 @@ export default class SauceLauncher {
         if (sauceConnectTunnelIdentifier) {
             if (Array.isArray(capabilities)) {
                 capabilities.forEach(capability => {
-                    capability.tunnelIdentifier = capability.tunnelIdentifier || sauceConnectTunnelIdentifier
+                    if (capability['sauce:options'] === undefined) {
+                        capability.tunnelIdentifier = capability.tunnelIdentifier || sauceConnectTunnelIdentifier
+                    } else {
+                        capability['sauce:options'].tunnelIdentifier = capability['sauce:options'].tunnelIdentifier || sauceConnectTunnelIdentifier
+                    }
                 })
             } else {
                 Object.keys(capabilities).forEach(browser => {
-                    capabilities[browser].capabilities.tunnelIdentifier = capabilities[browser].capabilities.tunnelIdentifier || sauceConnectTunnelIdentifier
+                    if (capabilities[browser].capabilities['sauce:options'] === undefined) {
+                        capabilities[browser].capabilities.tunnelIdentifier = capabilities[browser].capabilities.tunnelIdentifier || sauceConnectTunnelIdentifier
+                    } else {
+                        capabilities[browser].capabilities['sauce:options'].tunnelIdentifier = capabilities[browser].capabilities['sauce:options'].tunnelIdentifier || sauceConnectTunnelIdentifier
+                    }
                 })
             }
         }

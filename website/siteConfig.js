@@ -26,7 +26,7 @@ module.exports = {
     },
 
     // This copyright info is used in /core/Footer.js and blog rss/atom feeds.
-    copyright: 'Copyright © ' + new Date().getFullYear() + ' JS.Foundation',
+    copyright: 'Copyright © ' + new Date().getFullYear() + ' OpenJS Foundation',
 
     highlight: {
         // Highlight.js theme to use for syntax highlighting in code blocks
@@ -56,7 +56,10 @@ module.exports = {
     twitter: true,
     twitterImage: 'img/webdriverio.png',
     twitterUsername: 'webdriverio',
-    scrollToTop: true
+    scrollToTop: true,
+
+    /* Show last update time */
+    enableUpdateTime: true
 
     // You may provide arbitrary config keys to be used as needed by your
     // template. For example, if you need your repo's URL...

@@ -6,9 +6,15 @@ import logger from '@wdio/logger'
 
 import RunnerTransformStream from './transformStream'
 import ReplQueue from './replQueue'
+import RunnerStream from './stdStream'
 
 const log = logger('@wdio/local-runner')
 const replQueue = new ReplQueue()
+
+const stdOutStream = new RunnerStream()
+const stdErrStream = new RunnerStream()
+stdOutStream.pipe(process.stdout)
+stdErrStream.pipe(process.stderr)
 
 /**
  * WorkerInstance
@@ -62,7 +68,7 @@ export default class WorkerInstance extends EventEmitter {
             cwd: process.cwd(),
             env: runnerEnv,
             execArgv,
-            silent: true
+            stdio: ['inherit', 'pipe', 'pipe', 'ipc']
         })
 
         childProcess.on('message', ::this._handleMessage)
@@ -71,9 +77,8 @@ export default class WorkerInstance extends EventEmitter {
 
         /* istanbul ignore if */
         if (!process.env.JEST_WORKER_ID) {
-            childProcess.stdout.pipe(new RunnerTransformStream(cid)).pipe(process.stdout)
-            childProcess.stderr.pipe(new RunnerTransformStream(cid)).pipe(process.stderr)
-            process.stdin.pipe(childProcess.stdin)
+            childProcess.stdout.pipe(new RunnerTransformStream(cid)).pipe(stdOutStream)
+            childProcess.stderr.pipe(new RunnerTransformStream(cid)).pipe(stdErrStream)
         }
 
         return childProcess
@@ -93,9 +98,13 @@ export default class WorkerInstance extends EventEmitter {
          * store sessionId and connection data to worker instance
          */
         if (payload.name === 'sessionStarted') {
-            this.sessionId = payload.content.sessionId
-            delete payload.content.sessionId
-            Object.assign(this.server, payload.content)
+            if (payload.content.isMultiremote) {
+                Object.assign(this, payload.content)
+            } else {
+                this.sessionId = payload.content.sessionId
+                delete payload.content.sessionId
+                Object.assign(this.server, payload.content)
+            }
             return
         }
 

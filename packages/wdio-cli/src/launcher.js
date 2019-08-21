@@ -7,12 +7,12 @@ import { ConfigParser } from '@wdio/config'
 import { initialisePlugin, initialiseServices } from '@wdio/utils'
 
 import CLInterface from './interface'
-import { runServiceHook } from './utils'
+import { runOnPrepareHook, runOnCompleteHook, runServiceHook } from './utils'
 
 const log = logger('@wdio/cli:Launcher')
 
 class Launcher {
-    constructor (configFile, argv, isWatchMode) {
+    constructor (configFile, argv = {}, isWatchMode = false) {
         this.argv = argv
         this.configFile = configFile
 
@@ -55,49 +55,63 @@ class Launcher {
 
     /**
      * run sequence
-     * @return  {Promise} that only gets resolves with either an exitCode or an error
+     * @return  {Promise}               that only gets resolves with either an exitCode or an error
      */
     async run () {
-        let config = this.configParser.getConfig()
-        let caps = this.configParser.getCapabilities()
-        const launcher = initialiseServices(config, caps, 'launcher')
-
-        /**
-         * run pre test tasks for runner plugins
-         * (e.g. deploy Lambda functio to AWS)
-         */
-        await this.runner.initialise()
-
-        /**
-         * run onPrepare hook
-         */
-        await config.onPrepare(config, caps)
-        log.info('Run onPrepare hook')
-        await runServiceHook(launcher, 'onPrepare', config, caps)
-
         /**
          * catches ctrl+c event
          */
         exitHook(::this.exitHandler)
+        let exitCode
+        let error
 
-        let exitCode = await this.runMode(config, caps)
-
-        /**
-         * run onComplete hook
-         * even if it fails we still want to see result and end logger stream
-         */
-        log.info('Run onComplete hook')
-        await runServiceHook(launcher, 'onComplete', exitCode, config, caps)
         try {
-            await config.onComplete(exitCode, config, caps, this.interface.result)
+            const config = this.configParser.getConfig()
+            const caps = this.configParser.getCapabilities()
+            const launcher = initialiseServices(config, caps, 'launcher')
+
+            /**
+             * run pre test tasks for runner plugins
+             * (e.g. deploy Lambda function to AWS)
+             */
+            await this.runner.initialise()
+
+            /**
+             * run onPrepare hook
+             */
+            log.info('Run onPrepare hook')
+            await runOnPrepareHook(config.onPrepare, config, caps)
+            await runServiceHook(launcher, 'onPrepare', config, caps)
+
+            exitCode = await this.runMode(config, caps)
+
+            /**
+             * run onComplete hook
+             * even if it fails we still want to see result and end logger stream
+             */
+            log.info('Run onComplete hook')
+            await runServiceHook(launcher, 'onComplete', exitCode, config, caps)
+
+            const onCompleteResults = await runOnCompleteHook(config.onComplete, config, caps, exitCode, this.interface.result)
+
+            // if any of the onComplete hooks failed, update the exit code
+            exitCode = onCompleteResults.includes(1) ? 1 : exitCode
+
+            await logger.waitForBuffer()
+
+            this.interface.finalise()
         } catch (err) {
-            log.error(err)
-            exitCode = 1
+            error = err
+        } finally {
+            if (!this.hasTriggeredExitRoutine) {
+                this.hasTriggeredExitRoutine = true
+                await this.runner.shutdown()
+            }
         }
 
-        await logger.waitForBuffer()
-
-        this.interface.finalise()
+        if (error) {
+            throw error
+        }
         return exitCode
     }
 
@@ -116,6 +130,11 @@ class Launcher {
         }
 
         /**
+         * avoid retries in watch mode
+         */
+        const specFileRetries = config.watch ? 0 : config.specFileRetries
+
+        /**
          * schedule test runs
          */
         let cid = 0
@@ -126,7 +145,7 @@ class Launcher {
             this.schedule.push({
                 cid: cid++,
                 caps,
-                specs: this.configParser.getSpecs(caps.specs, caps.exclude).map(s => ({ files: [s], retries: config.specFileRetries })),
+                specs: this.configParser.getSpecs(caps.specs, caps.exclude).map(s => ({ files: [s], retries: specFileRetries })),
                 availableInstances: config.maxInstances || 1,
                 runningInstances: 0
             })
@@ -138,7 +157,7 @@ class Launcher {
                 this.schedule.push({
                     cid: cid++,
                     caps: capabilities,
-                    specs: this.configParser.getSpecs(capabilities.specs, capabilities.exclude).map(s => ({ files: [s], retries: config.specFileRetries })),
+                    specs: this.configParser.getSpecs(capabilities.specs, capabilities.exclude).map(s => ({ files: [s], retries: specFileRetries })),
                     availableInstances: capabilities.maxInstances || config.maxInstancesPerCapability,
                     runningInstances: 0,
                     seleniumServer: { hostname: config.hostname, port: config.port, protocol: config.protocol }
@@ -371,6 +390,7 @@ class Launcher {
     }
 
     /**
+     * We need exitHandler to catch SIGINT / SIGTERM events.
      * Make sure all started selenium sessions get closed properly and prevent
      * having dead driver processes. To do so let the runner end its Selenium
      * session first before killing
@@ -378,6 +398,10 @@ class Launcher {
     exitHandler (callback) {
         if (!callback) {
             return
+        }
+
+        if (this.hasTriggeredExitRoutine) {
+            return callback()
         }
 
         this.hasTriggeredExitRoutine = true

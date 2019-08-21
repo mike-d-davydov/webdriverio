@@ -1,21 +1,58 @@
 import allure from '@wdio/allure-reporter'
 
+// An example of adding command withing ts file with @wdio/sync
+declare module "@wdio/sync" {
+    interface Element {
+        elementCustomCommand: (arg: unknown) => number
+    }
+}
+
 // browser
 browser.pause(1)
 const waitUntil: boolean = browser.waitUntil(() => true, 1, '', 1)
 browser.getCookies()
-let res = browser.execute(function (x: number) {
+
+const executeResult = browser.execute(function (x: number) {
     return x
 }, 4)
-res.toFixed(2)
+executeResult.toFixed(2)
+
+const callResult = <number>browser.call(() =>
+    new Promise(resolve => setTimeout(() => resolve(4), 1))
+)
+callResult.toFixed(2)
+
+// browser element command
+browser.getElementRect('elementId')
+
+// protocol command return mapped object value
+const { x, y, width, height } = browser.getWindowRect()
+
+// protocol command return unmapped object
+const { foo, bar } = browser.takeHeapSnapshot()
+
+// browser command return mapped object value
+const { x: x0, y: y0, width: w, height: h } =  browser.getWindowSize()
+
+// browser custom command
+browser.browserCustomCommand(5)
+
+browser.overwriteCommand('click', function (origCommand) {
+    origCommand()
+}, true)
 
 // $
 const el1 = $('')
+const strFunction = (str: string) => str
+strFunction(el1.selector)
+strFunction(el1.elementId)
 const el2 = el1.$('')
 const el3 = el2.$('')
 el1.getCSSProperty('style')
 el2.click()
-el3.waitForDisplayed()
+// element custom command
+const el2result = el3.elementCustomCommand(4)
+el2result.toFixed(2)
 
 // $$
 const elems = $$('')

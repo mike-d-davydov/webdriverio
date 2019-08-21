@@ -20,8 +20,8 @@ Before installing dependencies, we need to initialize an empty NPM project (this
 To do this, run:
 
 ```sh
-$ mkdir webdriverio-test && cd webdriverio-test
-$ npm init -y
+mkdir webdriverio-test && cd webdriverio-test
+npm init -y
 ```
 
 The `-y` will answer 'yes' to all the prompts, giving us a standard NPM project. Feel free to omit the `-y` if you'd like to specify your own project details.
@@ -33,7 +33,7 @@ If you want to use WebdriverIO in your project for integration testing we recomm
 Now we need to install the cli. Do that by running:
 
 ```sh
-$ npm i --save-dev @wdio/cli
+npm i --save-dev @wdio/cli
 ```
 
 ### Generate Configuration File
@@ -41,7 +41,7 @@ $ npm i --save-dev @wdio/cli
 We'll next want to generate a configuration file that stores all of our WebdriverIO settings. To do that just run the configuration utility:
 
 ```sh
-$ ./node_modules/.bin/wdio config
+./node_modules/.bin/wdio config
 ```
 
 A question interface pops up. It will help to create the config easy and fast. If you are not sure what to answer follow this answers:
@@ -49,17 +49,11 @@ A question interface pops up. It will help to create the config easy and fast. I
 __Q: Where should your tests be launched?__<br>
 A: _local_<br>
 <br>
-__Q: Shall I install the runner plugin for you?__<br>
-A: _Yes_<br>
-<br>
 __Q: Where is your automation backend located?__<br>
 A: _On my local machine_<br>
 <br>
 __Q: Which framework do you want to use?__<br>
 A: _mocha_<br>
-<br>
-__Q: Shall I install the framework adapter for you?__<br>
-A: _Yes_ (just press enter)<br>
 <br>
 __Q: Do you want to run WebdriverIO commands synchronous or asynchronous?__<br>
 A: _sync_ (just press enter, you can also run commands async and handle promises by yourself but for the sake of simplicity let's run them synchronously)<br>
@@ -70,14 +64,8 @@ A: _./test/specs/**/*.js_ (just press enter)<br>
 __Q: Which reporter do you want to use?__<br>
 A: _dot_ (just press space and enter)<br>
 <br>
-__Q: Shall I install the reporter library for you?__<br>
-A: _Yes_ (just press enter)<br>
-<br>
 __Q: Do you want to add a service to your test setup?__<br>
 A: choose either _selenium-standalone_ (if you have JDK installed) or just _chromedriver_<br>
-<br>
-__Q: Level of logging verbosity:__<br>
-A: _info_<br>
 <br>
 __Q: What is the base url?__<br>
 A: _http://localhost_ (just press enter)<br>
@@ -89,13 +77,13 @@ That's it! The configurator now installs all required packages for you and creat
 Now it's time to create our test file. We're going to store all of our files in a new folder. Create the test folder like this:
 
 ```sh
-$ mkdir -p ./test/specs
+mkdir -p ./test/specs
 ```
 
 Create a new file in that folder (we'll call it `basic.js`):
 
 ```sh
-$ touch ./test/specs/basic.js
+touch ./test/specs/basic.js
 ```
 
 Open that file up and add the following code to it:
@@ -107,7 +95,7 @@ describe('webdriver.io page', () => {
     it('should have the right title', () => {
         browser.url('https://webdriver.io');
         const title = browser.getTitle();
-        assert.equal(title, 'WebdriverIO · Next-gen WebDriver test framework for Node.js');
+        assert.strictEqual(title, 'WebdriverIO · Next-gen WebDriver test framework for Node.js');
     });
 });
 ```
@@ -121,7 +109,7 @@ describe('webdriver.io page', () => {
     it('should have the right title', async () => {
         await browser.url('https://webdriver.io');
         const title = await browser.getTitle();
-        assert.equal(title, 'WebdriverIO · Next-gen WebDriver test framework for Node.js');
+        assert.strictEqual(title, 'WebdriverIO · Next-gen WebDriver test framework for Node.js');
     });
 });
 ```
@@ -134,7 +122,7 @@ Once added, save, then return to your terminal.
 The last step is to execute the test runner. To do so just run:
 
 ```sh
-$ ./node_modules/.bin/wdio wdio.conf.js
+./node_modules/.bin/wdio wdio.conf.js
 ```
 
 Hurray! The test should pass and you can start writing integration tests with WebdriverIO.

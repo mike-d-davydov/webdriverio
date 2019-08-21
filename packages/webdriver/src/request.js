@@ -2,7 +2,6 @@ import url from 'url'
 import http from 'http'
 import path from 'path'
 import https from 'https'
-import merge from 'lodash.merge'
 import request from 'request'
 import EventEmitter from 'events'
 
@@ -18,11 +17,12 @@ const agents = {
 }
 
 export default class WebDriverRequest extends EventEmitter {
-    constructor (method, endpoint, body) {
+    constructor (method, endpoint, body, isHubCommand) {
         super()
         this.body = body
         this.method = method
         this.endpoint = endpoint
+        this.isHubCommand = isHubCommand
         this.requiresSessionId = this.endpoint.match(/:sessionId/)
         this.defaultOptions = {
             method,
@@ -37,7 +37,7 @@ export default class WebDriverRequest extends EventEmitter {
     }
 
     makeRequest (options, sessionId) {
-        const fullRequestOptions = merge({}, this.defaultOptions, this._createOptions(options, sessionId))
+        const fullRequestOptions = Object.assign({}, this.defaultOptions, this._createOptions(options, sessionId))
         this.emit('request', fullRequestOptions)
         return this._request(fullRequestOptions, options.connectionRetryCount)
     }
@@ -54,7 +54,7 @@ export default class WebDriverRequest extends EventEmitter {
          */
         if (this.body && (Object.keys(this.body).length || this.method === 'POST')) {
             requestOptions.body = this.body
-            requestOptions.headers = merge({}, requestOptions.headers, {
+            requestOptions.headers = Object.assign({}, requestOptions.headers, {
                 'Content-Length': Buffer.byteLength(JSON.stringify(requestOptions.body), 'UTF-8')
             })
         }
@@ -71,7 +71,9 @@ export default class WebDriverRequest extends EventEmitter {
         requestOptions.uri = url.parse(
             `${options.protocol}://` +
             `${options.hostname}:${options.port}` +
-            path.join(options.path, this.endpoint.replace(':sessionId', sessionId))
+            (this.isHubCommand
+                ? this.endpoint
+                : path.join(options.path, this.endpoint.replace(':sessionId', sessionId)))
         )
 
         /**
@@ -101,6 +103,22 @@ export default class WebDriverRequest extends EventEmitter {
 
         return new Promise((resolve, reject) => request(fullRequestOptions, (err, response, body) => {
             const error = err || getErrorFromResponseBody(body)
+
+            /**
+             * hub commands don't follow standard response formats
+             * and can have empty bodies
+             */
+            if (this.isHubCommand) {
+                /**
+                 * if body contains HTML the command was called on a node
+                 * directly without using a hub, therefor throw
+                 */
+                if (typeof body === 'string' && body.startsWith('<!DOCTYPE html>')) {
+                    return reject(new Error('Command can only be called to a Selenium Hub'))
+                }
+
+                body = { value: body || null }
+            }
 
             /**
              * Resolve only if successful response

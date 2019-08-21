@@ -188,6 +188,16 @@ const requestMock = jest.fn().mockImplementation((params, cb) => {
     case `/wd/hub/session/${sessionId}/element/${genericElementId}/screenshot`:
         value = Buffer.from('some element screenshot').toString('base64')
         break
+    case '/grid/api/hub':
+        value = { some: 'config' }
+        break
+    case '/grid/api/testsession':
+        value = '<!DOCTYPE html><html lang="en"></html>'
+        break
+    }
+
+    if (params.uri.path && params.uri.path.startsWith(`/wd/hub/session/${sessionId}/element/`) && params.uri.path.includes('/attribute/')) {
+        value = `${params.uri.path.substring(params.uri.path.lastIndexOf('/') + 1)}-value`
     }
 
     /**
@@ -279,6 +289,9 @@ const requestMock = jest.fn().mockImplementation((params, cb) => {
     let response = { value }
     if (jsonwpMode) {
         response = { value, sessionId, status: 0 }
+    }
+    if (params.uri && params.uri.path && params.uri.path.startsWith('/grid')) {
+        response = response.value
     }
 
     cb(null, {

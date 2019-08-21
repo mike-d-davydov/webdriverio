@@ -1,11 +1,10 @@
 import logger from '@wdio/logger'
-import merge from 'lodash.merge'
 import { validateConfig } from '@wdio/config'
 
 import webdriverMonad from './monad'
 import WebDriverRequest from './request'
 import { DEFAULTS } from './constants'
-import { getPrototype, environmentDetector } from './utils'
+import { getPrototype, environmentDetector, getEnvironmentVars } from './utils'
 
 import WebDriverProtocol from '../protocol/webdriver.json'
 import JsonWProtocol from '../protocol/jsonwp.json'
@@ -59,20 +58,10 @@ export default class WebDriver {
          */
         params.capabilities = response.value.capabilities || response.value
 
-        /**
-         * apply mobile flags to driver scope
-         */
-        const { isW3C, isMobile, isIOS, isAndroid, isChrome, isSauce } = environmentDetector(params)
-        const environmentFlags = {
-            isW3C: { value: isW3C },
-            isMobile: { value: isMobile },
-            isIOS: { value: isIOS },
-            isAndroid: { value: isAndroid },
-            isChrome: { value: isChrome }
-        }
-
-        const protocolCommands = getPrototype({ isW3C, isChrome, isMobile, isSauce })
-        const prototype = merge(protocolCommands, environmentFlags, userPrototype)
+        const environment = environmentDetector(params)
+        const environmentPrototype = getEnvironmentVars(environment)
+        const protocolCommands = getPrototype(environment)
+        const prototype = { ...protocolCommands, ...environmentPrototype, ...userPrototype }
         const monad = webdriverMonad(params, modifier, prototype)
         return monad(response.value.sessionId || response.sessionId, commandWrapper)
     }
@@ -85,11 +74,17 @@ export default class WebDriver {
             throw new Error('sessionId is required to attach to existing session')
         }
 
-        logger.setLevel('webdriver', options.logLevel)
+        // logLevel can be undefined in watch mode when SIGINT is called
+        if (options.logLevel !== undefined) {
+            logger.setLevel('webdriver', options.logLevel)
+        }
 
         options.capabilities = options.capabilities || {}
         options.isW3C = options.isW3C === false ? false : true
-        const prototype = Object.assign(getPrototype({ ...options }), userPrototype)
+
+        const environmentPrototype = getEnvironmentVars(options)
+        const protocolCommands = getPrototype(options)
+        const prototype = { ...protocolCommands, ...environmentPrototype, ...userPrototype }
         const monad = webdriverMonad(options, modifier, prototype)
         return monad(options.sessionId, commandWrapper)
     }
